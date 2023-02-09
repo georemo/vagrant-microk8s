@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mycluser-loadbalancer
+  annotations:
+    metallb.universe.tf/address-pool: custom-addresspool
+spec:
+  type: LoadBalancer
+  selector:
+    mysql.oracle.com/cluster: mycluster
+  ports:
+  - protocol: TCP
+    port: 33060
+    targetPort: 3306

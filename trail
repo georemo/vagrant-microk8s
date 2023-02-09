@@ -1,0 +1,501 @@
+emp-06@emp06 ~/vagrant-microk8s (master)> ssh vagrant@192.168.1.10
+vagrant@192.168.1.10's password: 
+Welcome to Ubuntu 22.04.1 LTS (GNU/Linux 5.15.0-56-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Fri Feb  3 08:20:31 PM UTC 2023
+
+  System load:  1.2333984375       Users logged in:          0
+  Usage of /:   19.8% of 30.34GB   IPv4 address for docker0: 172.17.0.1
+  Memory usage: 24%                IPv4 address for eth0:    10.0.2.15
+  Swap usage:   0%                 IPv4 address for eth1:    192.168.1.2
+  Processes:    159                IPv4 address for eth2:    192.168.1.10
+
+
+This system is built by the Bento project by Chef Software
+More information can be found at https://github.com/chef/bento
+Last login: Fri Feb  3 10:40:08 2023 from 192.168.1.186
+vagrant@microk8-vag-01-node-0:~$ kubectl get pv
+No resources found
+vagrant@microk8-vag-01-node-0:~$ kubectl get nodes
+NAME                    STATUS   ROLES    AGE   VERSION
+microk8-vag-01-node-1   Ready    <none>   9h    v1.26.0
+microk8-vag-01-node-0   Ready    <none>   10h   v1.26.0
+microk8-vag-01-node-2   Ready    <none>   9h    v1.26.0
+vagrant@microk8-vag-01-node-0:~$ kubectl get ns
+NAME              STATUS   AGE
+kube-system       Active   10h
+kube-public       Active   10h
+kube-node-lease   Active   10h
+default           Active   10h
+mysql-operator    Active   9h
+vagrant@microk8-vag-01-node-0:~$ kubectl get pv -ns mysql-operator
+Error from server (NotFound): persistentvolumes "mysql-operator" not found
+vagrant@microk8-vag-01-node-0:~$ kubectl get all
+NAME              READY   STATUS    RESTARTS   AGE
+pod/mycluster-1   0/2     Pending   0          9h
+pod/mycluster-0   0/2     Pending   0          9h
+pod/mycluster-2   0/2     Pending   0          9h
+
+NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                                  AGE
+service/kubernetes            ClusterIP   10.152.183.1     <none>        443/TCP                                                  10h
+service/mycluster-instances   ClusterIP   None             <none>        3306/TCP,33060/TCP,33061/TCP                             9h
+service/mycluster             ClusterIP   10.152.183.132   <none>        3306/TCP,33060/TCP,6446/TCP,6448/TCP,6447/TCP,6449/TCP   9h
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/mycluster-router   0/0     0            0           9h
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/mycluster-router-578758658b   0         0         0       9h
+
+NAME                         READY   AGE
+statefulset.apps/mycluster   0/3     9h
+vagrant@microk8-vag-01-node-0:~$ kubectl get apps
+error: the server doesn't have a resource type "apps"
+vagrant@microk8-vag-01-node-0:~$ kubectl get services
+NAME                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                                  AGE
+kubernetes            ClusterIP   10.152.183.1     <none>        443/TCP                                                  10h
+mycluster-instances   ClusterIP   None             <none>        3306/TCP,33060/TCP,33061/TCP                             9h
+mycluster             ClusterIP   10.152.183.132   <none>        3306/TCP,33060/TCP,6446/TCP,6448/TCP,6447/TCP,6449/TCP   9h
+vagrant@microk8-vag-01-node-0:~$ kubectl describe services mycluster
+Name:              mycluster
+Namespace:         default
+Labels:            mysql.oracle.com/cluster=mycluster
+                   tier=mysql
+Annotations:       <none>
+Selector:          component=mysqlrouter,mysql.oracle.com/cluster=mycluster,tier=mysql
+Type:              ClusterIP
+IP Family Policy:  SingleStack
+IP Families:       IPv4
+IP:                10.152.183.132
+IPs:               10.152.183.132
+Port:              mysql  3306/TCP
+TargetPort:        6446/TCP
+Endpoints:         <none>
+Port:              mysqlx  33060/TCP
+TargetPort:        6448/TCP
+Endpoints:         <none>
+Port:              mysql-alternate  6446/TCP
+TargetPort:        6446/TCP
+Endpoints:         <none>
+Port:              mysqlx-alternate  6448/TCP
+TargetPort:        6448/TCP
+Endpoints:         <none>
+Port:              mysql-ro  6447/TCP
+TargetPort:        6447/TCP
+Endpoints:         <none>
+Port:              mysqlx-ro  6449/TCP
+TargetPort:        6449/TCP
+Endpoints:         <none>
+Session Affinity:  None
+Events:            <none>
+vagrant@microk8-vag-01-node-0:~$ kubectl create secret generic mypwds \
+        --from-literal=rootUser=root \
+        --from-literal=rootHost=% \
+        --from-literal=rootPassword="sakila"
+error: failed to create secret secrets "mypwds" already exists
+vagrant@microk8-vag-01-node-0:~$ ls
+mycluster.yaml  snap
+vagrant@microk8-vag-01-node-0:~$ cat mycluster.yaml
+apiVersion: mysql.oracle.com/v2
+kind: InnoDBCluster
+metadata:
+  name: mycluster
+spec:
+  secretName: mypwds
+  tlsUseSelfSigned: true
+  instances: 3
+  router:
+    instances: 1
+vagrant@microk8-vag-01-node-0:~$ kubectl apply -f mycluster.yaml
+innodbcluster.mysql.oracle.com/mycluster unchanged
+vagrant@microk8-vag-01-node-0:~$ kubectl get innodbcluster
+NAME        STATUS    ONLINE   INSTANCES   ROUTERS   AGE
+mycluster   PENDING   0        3           1         10h
+vagrant@microk8-vag-01-node-0:~$ kubectl describe innodbcluster mycluster
+Name:         mycluster
+Namespace:    default
+Labels:       <none>
+Annotations:  kopf.zalando.org/last-handled-configuration:
+                {"spec":{"baseServerId":1000,"instances":3,"router":{"instances":1},"secretName":"mypwds","tlsUseSelfSigned":true},"metadata":{"annotation...
+              mysql.oracle.com/mysql-operator-version: 8.0.32-2.0.8
+API Version:  mysql.oracle.com/v2
+Kind:         InnoDBCluster
+Metadata:
+  Creation Timestamp:  2023-02-03T10:54:43Z
+  Finalizers:
+    kopf.zalando.org/KopfFinalizerMarker
+  Generation:  1
+  Managed Fields:
+    API Version:  mysql.oracle.com/v2
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          .:
+          f:kubectl.kubernetes.io/last-applied-configuration:
+      f:spec:
+        .:
+        f:baseServerId:
+        f:instances:
+        f:router:
+          .:
+          f:instances:
+        f:secretName:
+        f:tlsUseSelfSigned:
+    Manager:      kubectl-client-side-apply
+    Operation:    Update
+    Time:         2023-02-03T10:54:43Z
+    API Version:  mysql.oracle.com/v2
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          f:mysql.oracle.com/mysql-operator-version:
+    Manager:      OpenAPI-Generator
+    Operation:    Update
+    Time:         2023-02-03T10:54:45Z
+    API Version:  mysql.oracle.com/v2
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        .:
+        f:cluster:
+          .:
+          f:lastProbeTime:
+          f:onlineInstances:
+          f:status:
+    Manager:      OpenAPI-Generator
+    Operation:    Update
+    Subresource:  status
+    Time:         2023-02-03T10:54:45Z
+    API Version:  mysql.oracle.com/v2
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          f:kopf.zalando.org/last-handled-configuration:
+        f:finalizers:
+          .:
+          v:"kopf.zalando.org/KopfFinalizerMarker":
+    Manager:      kopf
+    Operation:    Update
+    Time:         2023-02-03T10:54:47Z
+    API Version:  mysql.oracle.com/v2
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        f:kopf:
+          .:
+          f:progress:
+    Manager:         kopf
+    Operation:       Update
+    Subresource:     status
+    Time:            2023-02-03T10:54:47Z
+  Resource Version:  4288
+  UID:               4497a4f0-df8a-4804-bf5b-1a8ea59a07b3
+Spec:
+  Base Server Id:  1000
+  Instances:       3
+  Router:
+    Instances:          1
+  Secret Name:          mypwds
+  Tls Use Self Signed:  true
+Status:
+  Cluster:
+    Last Probe Time:   2023-02-03T10:54:45Z
+    Online Instances:  0
+    Status:            PENDING
+  Kopf:
+    Progress:
+Events:  <none>
+vagrant@microk8-vag-01-node-0:~$ kubectl get nodes
+NAME                    STATUS   ROLES    AGE   VERSION
+microk8-vag-01-node-1   Ready    <none>   10h   v1.26.0
+microk8-vag-01-node-0   Ready    <none>   10h   v1.26.0
+microk8-vag-01-node-2   Ready    <none>   10h   v1.26.0
+vagrant@microk8-vag-01-node-0:~$ kubectl describe nodes microk8-vag-01-node-0
+Name:               microk8-vag-01-node-0
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/os=linux
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=microk8-vag-01-node-0
+                    kubernetes.io/os=linux
+                    microk8s.io/cluster=true
+                    node.kubernetes.io/microk8s-controlplane=microk8s-controlplane
+Annotations:        node.alpha.kubernetes.io/ttl: 0
+                    projectcalico.org/IPv4Address: 192.168.1.10/24
+                    projectcalico.org/IPv4VXLANTunnelAddr: 10.1.205.128
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Fri, 03 Feb 2023 10:13:03 +0000
+Taints:             <none>
+Unschedulable:      false
+Lease:
+  HolderIdentity:  microk8-vag-01-node-0
+  AcquireTime:     <unset>
+  RenewTime:       Fri, 03 Feb 2023 21:01:10 +0000
+Conditions:
+  Type                 Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----                 ------  -----------------                 ------------------                ------                       -------
+  NetworkUnavailable   False   Fri, 03 Feb 2023 20:10:21 +0000   Fri, 03 Feb 2023 20:10:21 +0000   CalicoIsUp                   Calico is running on this node
+  MemoryPressure       False   Fri, 03 Feb 2023 21:01:05 +0000   Fri, 03 Feb 2023 10:13:03 +0000   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure         False   Fri, 03 Feb 2023 21:01:05 +0000   Fri, 03 Feb 2023 10:13:03 +0000   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure          False   Fri, 03 Feb 2023 21:01:05 +0000   Fri, 03 Feb 2023 10:13:03 +0000   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready                True    Fri, 03 Feb 2023 21:01:05 +0000   Fri, 03 Feb 2023 20:09:59 +0000   KubeletReady                 kubelet is posting ready status. AppArmor enabled
+Addresses:
+  InternalIP:  192.168.1.10
+  Hostname:    microk8-vag-01-node-0
+Capacity:
+  cpu:                4
+  ephemeral-storage:  31811408Ki
+  hugepages-2Mi:      0
+  memory:             4017728Ki
+  pods:               110
+Allocatable:
+  cpu:                4
+  ephemeral-storage:  30762832Ki
+  hugepages-2Mi:      0
+  memory:             3915328Ki
+  pods:               110
+System Info:
+  Machine ID:                 b4047197195f4f359571cd0658157294
+  System UUID:                cf4ecd6c-2928-c640-85b1-1f831770aeba
+  Boot ID:                    7eabf24f-382f-4c17-b711-98a94161a36f
+  Kernel Version:             5.15.0-56-generic
+  OS Image:                   Ubuntu 22.04.1 LTS
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://1.6.8
+  Kubelet Version:            v1.26.0
+  Kube-Proxy Version:         v1.26.0
+Non-terminated Pods:          (3 in total)
+  Namespace                   Name                                       CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+  ---------                   ----                                       ------------  ----------  ---------------  -------------  ---
+  kube-system                 coredns-6f5f9b5d74-hd6qq                   100m (2%)     0 (0%)      70Mi (1%)        170Mi (4%)     10h
+  kube-system                 calico-kube-controllers-9746d7cdb-vzvcb    0 (0%)        0 (0%)      0 (0%)           0 (0%)         10h
+  kube-system                 calico-node-npxtj                          250m (6%)     0 (0%)      0 (0%)           0 (0%)         10h
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests   Limits
+  --------           --------   ------
+  cpu                350m (8%)  0 (0%)
+  memory             70Mi (1%)  170Mi (4%)
+  ephemeral-storage  0 (0%)     0 (0%)
+  hugepages-2Mi      0 (0%)     0 (0%)
+Events:              <none>
+vagrant@microk8-vag-01-node-0:~$ kubectl get pods
+NAME          READY   STATUS    RESTARTS   AGE
+mycluster-2   0/2     Pending   0          10h
+mycluster-0   0/2     Pending   0          10h
+mycluster-1   0/2     Pending   0          10h
+vagrant@microk8-vag-01-node-0:~$ kubectl describe pods mycluster-0
+Name:             mycluster-0
+Namespace:        default
+Priority:         0
+Service Account:  mycluster-sidecar-sa
+Node:             <none>
+Labels:           app.kubernetes.io/component=database
+                  app.kubernetes.io/created-by=mysql-operator
+                  app.kubernetes.io/instance=mysql-innodbcluster-mycluster-mysql-server
+                  app.kubernetes.io/managed-by=mysql-operator
+                  app.kubernetes.io/name=mysql-innodbcluster-mysql-server
+                  component=mysqld
+                  controller-revision-hash=mycluster-866646b694
+                  mysql.oracle.com/cluster=mycluster
+                  statefulset.kubernetes.io/pod-name=mycluster-0
+                  tier=mysql
+Annotations:      kopf.zalando.org/on_pod_create:
+                    {"started":"2023-02-03T10:54:46.568726","delayed":"2023-02-03T21:04:46.743977","purpose":"create","retries":340,"success":false,"failure":...
+Status:           Pending
+IP:               
+IPs:              <none>
+Controlled By:    StatefulSet/mycluster
+Init Containers:
+  fixdatadir:
+    Image:      mysql/mysql-operator:8.0.32-2.0.8
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      bash
+      -c
+      chown 27:27 /var/lib/mysql && chmod 0700 /var/lib/mysql
+    Environment:  <none>
+    Mounts:
+      /var/lib/mysql from datadir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-dl4rz (ro)
+  initconf:
+    Image:      mysql/mysql-operator:8.0.32-2.0.8
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      mysqlsh
+      --log-level=@INFO
+      --pym
+      mysqloperator
+      init
+      --pod-name
+      $(POD_NAME)
+      --pod-namespace
+      $(POD_NAMESPACE)
+      --datadir
+      /var/lib/mysql
+    Environment:
+      POD_NAME:                  mycluster-0 (v1:metadata.name)
+      POD_NAMESPACE:             default (v1:metadata.namespace)
+      MYSQLSH_USER_CONFIG_HOME:  /tmp
+    Mounts:
+      /mnt/initconf from initconfdir (ro)
+      /mnt/mycnfdata from mycnfdata (rw)
+      /var/lib/mysql from datadir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-dl4rz (ro)
+  initmysql:
+    Image:      mysql/mysql-server:8.0.32
+    Port:       <none>
+    Host Port:  <none>
+    Args:
+      mysqld
+      --user=mysql
+    Environment:
+      MYSQL_INITIALIZE_ONLY:     1
+      MYSQL_ROOT_PASSWORD:       <set to the key 'rootPassword' in secret 'mypwds'>  Optional: false
+      MYSQLSH_USER_CONFIG_HOME:  /tmp
+    Mounts:
+      /docker-entrypoint-initdb.d from mycnfdata (rw,path="docker-entrypoint-initdb.d")
+      /etc/my.cnf from mycnfdata (rw,path="my.cnf")
+      /etc/my.cnf.d from mycnfdata (rw,path="my.cnf.d")
+      /var/lib/mysql from datadir (rw)
+      /var/run/mysqld from rundir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-dl4rz (ro)
+Containers:
+  sidecar:
+    Image:      mysql/mysql-operator:8.0.32-2.0.8
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      mysqlsh
+      --pym
+      mysqloperator
+      sidecar
+      --pod-name
+      $(POD_NAME)
+      --pod-namespace
+      $(POD_NAMESPACE)
+      --datadir
+      /var/lib/mysql
+    Environment:
+      POD_NAME:                  mycluster-0 (v1:metadata.name)
+      POD_NAMESPACE:             default (v1:metadata.namespace)
+      MYSQL_UNIX_PORT:           /var/run/mysqld/mysql.sock
+      MYSQLSH_USER_CONFIG_HOME:  /mysqlsh
+    Mounts:
+      /etc/my.cnf from mycnfdata (rw,path="my.cnf")
+      /etc/my.cnf.d from mycnfdata (rw,path="my.cnf.d")
+      /mysqlsh from shellhome (rw)
+      /var/run/mysqld from rundir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-dl4rz (ro)
+  mysql:
+    Image:       mysql/mysql-server:8.0.32
+    Ports:       3306/TCP, 33060/TCP, 33061/TCP
+    Host Ports:  0/TCP, 0/TCP, 0/TCP
+    Args:
+      mysqld
+      --user=mysql
+    Liveness:   exec [/livenessprobe.sh] delay=15s timeout=1s period=15s #success=1 #failure=10
+    Readiness:  exec [/readinessprobe.sh] delay=10s timeout=1s period=5s #success=1 #failure=10000
+    Startup:    exec [/livenessprobe.sh 8] delay=5s timeout=1s period=3s #success=1 #failure=10000
+    Environment:
+      MYSQL_UNIX_PORT:  /var/run/mysqld/mysql.sock
+    Mounts:
+      /etc/my.cnf from mycnfdata (rw,path="my.cnf")
+      /etc/my.cnf.d from mycnfdata (rw,path="my.cnf.d")
+      /livenessprobe.sh from initconfdir (rw,path="livenessprobe.sh")
+      /readinessprobe.sh from initconfdir (rw,path="readinessprobe.sh")
+      /var/lib/mysql from datadir (rw)
+      /var/run/mysqld from rundir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-dl4rz (ro)
+Readiness Gates:
+  Type                          Status
+  mysql.oracle.com/configured   <none> 
+  mysql.oracle.com/ready        <none> 
+Conditions:
+  Type           Status
+  PodScheduled   False 
+Volumes:
+  datadir:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  datadir-mycluster-0
+    ReadOnly:   false
+  mycnfdata:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  rundir:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  initconfdir:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      mycluster-initconf
+    Optional:  false
+  shellhome:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  kube-api-access-dl4rz:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age    From               Message
+  ----     ------            ----   ----               -------
+  Warning  FailedScheduling  61s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  3m3s   default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  5m6s   default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  4m46s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  4m36s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  4m16s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  92s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  10s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  4m5s   default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  3m45s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  102s   default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  2m12s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  30s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  3m14s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  3m34s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  41s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  2m32s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  2m43s  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  2m2s   default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Warning  FailedScheduling  72s    default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod..
+  Normal   Logging           4m46s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           4m46s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Error    Logging           4m15s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           4m15s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Normal   Logging           3m44s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           3m44s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           3m14s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           3m13s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Error    Logging           2m43s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           2m43s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Normal   Logging           2m13s  kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           2m12s  kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           102s   kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           102s   kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Error    Logging           71s    kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           71s    kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           40s    kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+  Normal   Logging           40s    kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Normal   Logging           9s     kopf               POD CREATED: pod=mycluster-0 ContainersReady=None Ready=None gate[configured]=None
+  Error    Logging           9s     kopf               Handler 'on_pod_create' failed temporarily: Sidecar of mycluster-0 is not yet configured
+vagrant@microk8-vag-01-node-0:~$ 

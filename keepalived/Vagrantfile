@@ -1,0 +1,53 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+    
+Vagrant.configure("2") do |config|
+    # config.vm.box = "ubuntu/trusty64"
+    config.vm.box = "bento/ubuntu-22.04"
+    cluster_network = "192.168.1"
+    config.vm.network "public_network", bridge: "wlp2s0: Wi-Fi (AirPort)", auto_config: true
+    
+    # Configs for haproxy 1 (master)
+    config.vm.define :hap1 do |hap1_config|
+        hap1_config.vm.provider :virtualbox do |vb_config|
+            vb_config.name = "HAProxy-1"
+            vb_config.memory = 1024
+        end
+        hap1_config.vm.hostname = "hap1"
+        # hap1_config.vm.network "private_network", ip: "192.168.1.242"
+        hap1_config.vm.network :public_network, ip: "192.168.1.242"
+        hap1_config.vm.provision :shell, path: "haproxy.sh", env: {"PRIORITY" => "101"}
+    end
+    
+    # Configs for haproxy 2 (backup)
+    config.vm.define :hap2 do |hap2_config|
+        hap2_config.vm.provider :virtualbox do |vb_config|
+            vb_config.name = "HAProxy-2"
+            vb_config.memory = 1024
+        end
+        hap2_config.vm.hostname = "hap2"
+        # hap2_config.vm.network "private_network", ip: "192.168.1.243"
+        hap2_config.vm.network :public_network, ip: "192.168.1.243"
+        hap2_config.vm.provision :shell, path: "haproxy.sh", env: {"PRIORITY" => "100"}
+    end
+    
+    # # Configs for web server 1
+    # config.vm.define :web1 do |web1_config|
+    #     web1_config.vm.provider :virtualbox do |vb_config|
+    #         vb_config.name = "Web Server 1 - lay4-hap2-web2"
+    #     end
+    #     web1_config.vm.hostname = "web1"
+    #     web1_config.vm.network "private_network", ip: "192.168.1.21"
+    #     web1_config.vm.provision :shell, path: "webserver.sh"
+    # end
+    
+    # # Configs for web server 2
+    # config.vm.define :web2 do |web2_config|
+    #     web2_config.vm.provider :virtualbox do |vb_config|
+    #         vb_config.name = "Web Server 2 - lay4-hap2-web2"
+    #     end
+    #     web2_config.vm.hostname = "web2"
+    #     web2_config.vm.network "private_network", ip: "192.168.1.22"
+    #     web2_config.vm.provision :shell, path: "webserver.sh"
+    # end
+end

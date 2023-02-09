@@ -1,0 +1,39 @@
+---
+set hostname:
+- hostnamectl set-hostname microk8-vag-01-node-2
+
+crate microk8s cluster:
+- joinNode=$(microk8s add-node)
+
+echo "$joinNode" | while read -r a; do 
+    echo $a; 
+done
+
+issue:
+after deploying mysql cluster, the following error is registered on events:
+- no persistent volumes available for this claim and no storage class is set
+simmilar issue reported:
+- https://discuss.kubernetes.io/t/microk8s-failedbinding-no-persistent-volumes-available-for-this-claim-and-no-storage-class-is-set/9189
+suggested solution:
+- "Did you enable storage when setting up microk8s?"
+Example(How to setup MicroK8s with RBAC and Storage):
+- https://igy.cx/posts/setup-microk8s-rbac-storage/
+
+
+
+
+open-ebs storage:
+- https://microk8s.io/docs/addon-openebs
+https://openebs.io/docs/main/user-guides/quickstart
+https://computingforgeeks.com/deploy-and-use-openebs-container-storage-on-kubernetes/
+https://github.com/balchua/do-microk8s/blob/master/docs/openebs.md
+
+pv/pvc:
+kubectl get pv
+kubectl describe pv
+kubectl get pvc
+kubectl describe pvc
+
+load balancing:
+https://mswis.com/load-balancing-with-microk8s-kubernetes/
+

@@ -1,0 +1,158 @@
+emp-06@emp06 ~/vagrant-microk8s (master)> vagrant ssh microk8-vag-01-node-0
+Welcome to Ubuntu 22.04.1 LTS (GNU/Linux 5.15.0-56-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Wed Feb  8 02:55:14 PM UTC 2023
+
+  System load:  1.23583984375      Users logged in:          0
+  Usage of /:   26.9% of 30.34GB   IPv4 address for docker0: 172.17.0.1
+  Memory usage: 49%                IPv4 address for eth0:    10.0.2.15
+  Swap usage:   0%                 IPv4 address for eth1:    192.168.1.2
+  Processes:    185                IPv4 address for eth2:    192.168.1.10
+
+
+This system is built by the Bento project by Chef Software
+More information can be found at https://github.com/chef/bento
+Last login: Mon Feb  6 13:26:39 2023 from 10.0.2.2
+vagrant@microk8-vag-01-node-0:~$ fish
+Welcome to fish, the friendly interactive shell
+Type help for instructions on how to use fish
+vagrant@microk8-vag-01-node-0 ~> microk8s kubectl get svc -o wide
+NAME                     TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)                                                  AGE    SELECTOR
+kubernetes               ClusterIP      10.152.183.1     <none>          443/TCP                                                  2d2h   <none>
+mycluster-instances      ClusterIP      None             <none>          3306/TCP,33060/TCP,33061/TCP                             46h    component=mysqld,mysql.oracle.com/cluster=mycluster,tier=mysql
+mycluster                ClusterIP      10.152.183.77    <none>          3306/TCP,33060/TCP,6446/TCP,6448/TCP,6447/TCP,6449/TCP   46h    component=mysqlrouter,mysql.oracle.com/cluster=mycluster,tier=mysql
+mycluser-loadbalancer    LoadBalancer   10.152.183.17    192.168.1.200   33060:31093/TCP                                          45h    mysql.oracle.com/cluster=mycluster
+mycluser-loadbalancer2   LoadBalancer   10.152.183.153   192.168.1.201   33060:32239/TCP                                          42h    mysql.oracle.com/cluster=mycluster
+mycluser-nodeport        NodePort       10.152.183.188   <none>          33060:30772/TCP                                          42h    mysql.oracle.com/cluster=mycluster
+vagrant@microk8-vag-01-node-0 ~> microk8s kubectl get pods
+NAME                                READY   STATUS    RESTARTS      AGE
+mycluster-router-578758658b-n7m7q   1/1     Running   3 (63m ago)   47h
+mycluster-0                         2/2     Running   2 (64m ago)   47h
+mycluster-1                         2/2     Running   2 (66m ago)   47h
+mycluster-2                         2/2     Running   4 (67m ago)   47h
+vagrant@microk8-vag-01-node-0 ~> microk8s kubectl get nodes
+NAME                    STATUS   ROLES    AGE    VERSION
+microk8-vag-01-node-2   Ready    <none>   47h    v1.26.1
+microk8-vag-01-node-0   Ready    <none>   2d3h   v1.26.1
+microk8-vag-01-node-1   Ready    <none>   47h    v1.26.1
+vagrant@microk8-vag-01-node-0 ~> microk8s kubectl get nodes -o wide
+NAME                    STATUS   ROLES    AGE    VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+microk8-vag-01-node-0   Ready    <none>   2d3h   v1.26.1   192.168.1.10   <none>        Ubuntu 22.04.1 LTS   5.15.0-56-generic   containerd://1.6.8
+microk8-vag-01-node-1   Ready    <none>   47h    v1.26.1   192.168.1.11   <none>        Ubuntu 22.04.1 LTS   5.15.0-56-generic   containerd://1.6.8
+microk8-vag-01-node-2   Ready    <none>   47h    v1.26.1   192.168.1.12   <none>        Ubuntu 22.04.1 LTS   5.15.0-56-generic   containerd://1.6.8
+vagrant@microk8-vag-01-node-0 ~> microk8s enable openebs
+Addon openebs was not found in any repository
+To use the community maintained flavor enable the respective repository:
+
+    microk8s enable community
+
+vagrant@microk8-vag-01-node-0 ~ [1]> microk8s enable community
+Infer repository core for addon community
+Cloning into '/var/snap/microk8s/common/addons/community'...
+done.
+Community repository is now enabled
+vagrant@microk8-vag-01-node-0 ~> microk8s enable openebs
+Infer repository community for addon openebs
+iscsid is not available or enabled.
+Make sure iscsi is installed on all nodes.
+To enable iscsid: 
+      sudo systemctl enable iscsid
+Please refer to the OpenEBS prerequisites (https://docs.openebs.io/docs/next/prerequisites.html)
+vagrant@microk8-vag-01-node-0 ~> sudo systemctl enable iscsid
+Synchronizing state of iscsid.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable iscsid
+Created symlink /etc/systemd/system/sysinit.target.wants/iscsid.service → /lib/systemd/system/iscsid.service.
+vagrant@microk8-vag-01-node-0 ~> microk8s enable openebs
+Infer repository community for addon openebs
+Infer repository core for addon dns
+Addon core/dns is already enabled
+Infer repository core for addon helm3
+Addon core/helm3 is already enabled
+"openebs" has been added to your repositories
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "openebs" chart repository
+Update Complete. ⎈Happy Helming!⎈
+NAME: openebs
+LAST DEPLOYED: Wed Feb  8 16:38:51 2023
+NAMESPACE: openebs
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Successfully installed OpenEBS.
+
+Check the status by running: kubectl get pods -n openebs
+
+The default values will install NDM and enable OpenEBS hostpath and device
+storage engines along with their default StorageClasses. Use `kubectl get sc`
+to see the list of installed OpenEBS StorageClasses.
+
+**Note**: If you are upgrading from the older helm chart that was using cStor
+and Jiva (non-csi) volumes, you will have to run the following command to include
+the older provisioners:
+
+helm upgrade openebs openebs/openebs \
+        --namespace openebs \
+        --set legacy.enabled=true \
+        --reuse-values
+
+For other engines, you will need to perform a few more additional steps to
+enable the engine, configure the engines (e.g. creating pools) and create 
+StorageClasses. 
+
+For example, cStor can be enabled using commands like:
+
+helm upgrade openebs openebs/openebs \
+        --namespace openebs \
+        --set cstor.enabled=true \
+        --reuse-values
+
+For more information, 
+- view the online documentation at https://openebs.io/docs or
+- connect with an active community on Kubernetes slack #openebs channel.
+OpenEBS is installed
+
+
+-----------------------
+
+When using OpenEBS with a single node MicroK8s, it is recommended to use the openebs-hostpath StorageClass
+An example of creating a PersistentVolumeClaim utilizing the openebs-hostpath StorageClass
+
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: local-hostpath-pvc
+spec:
+  storageClassName: openebs-hostpath
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5G
+
+
+
+-----------------------
+
+If you are planning to use OpenEBS with multi nodes, you can use the openebs-jiva-csi-default StorageClass.
+An example of creating a PersistentVolumeClaim utilizing the openebs-jiva-csi-default StorageClass
+
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jiva-volume-claim
+spec:
+  storageClassName: openebs-jiva-csi-default
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5G
+
+vagrant@microk8-vag-01-node-0 ~> 
